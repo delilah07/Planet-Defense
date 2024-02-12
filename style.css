@@ -12,5 +12,8 @@ body {
 #canvas {
   border: 3px solid black;
   background: url(./images/background.png) center no-repeat;
-  background-size: contain;
+  background-size: cover;
+}
+.hidden {
+  display: none;
 }
