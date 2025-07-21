@@ -62,7 +62,6 @@ class Player {
         this.aim[0],
         this.aim[1]
       );
-    console.log(projectile);
   }
 }
 
@@ -117,6 +116,57 @@ class Projectile {
   }
 }
 
+class Enemy {
+  constructor(game) {
+    this.game = game;
+    this.x = 100;
+    this.y = 100;
+    this.radius = 40;
+    this.width = this.radius * 2;
+    this.height = this.radius * 2;
+    this.speedX = 0;
+    this.speedY = 0;
+    this.free = true;
+  }
+
+  start() {
+    this.free = false;
+    this.x = Math.random() * this.game.width;
+    this.y = Math.random() * this.game.height;
+
+    const aim = this.game.calcAim(this, this.game.planet);
+
+    this.speedX = aim[0];
+    this.speedY = aim[1];
+  }
+  reset() {
+    this.free = true;
+  }
+  draw(context) {
+    if (!this.free) {
+      context.beginPath();
+      context.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      context.stroke();
+    }
+  }
+  update() {
+    if (!this.free) {
+      this.x += this.speedX;
+      this.y += this.speedY;
+    }
+
+    // //reset if outside the visible game area
+    // if (
+    //   this.x < 0 ||
+    //   this.x > this.game.width ||
+    //   this.y < 0 ||
+    //   this.y > this.game.height
+    // ) {
+    //   this.reset();
+    // }
+  }
+}
+
 class Game {
   constructor(canvas) {
     this.canvas = canvas;
@@ -133,6 +183,15 @@ class Game {
     this.projectilePool = [];
     this.numberOfProjectiles = 20;
     this.createProjectilePool();
+
+    this.enemyPool = [];
+    this.numberOfEnemies = 20;
+    this.createEnemyPool();
+    this.enemyPool[0].start();
+    this.enemyPool[1].start();
+    this.enemyPool[2].start();
+    this.enemyPool[3].start();
+    this.enemyPool[4].start();
 
     window.addEventListener('mousemove', (e) => {
       this.mouse.x = e.offsetX;
@@ -156,6 +215,11 @@ class Game {
     this.projectilePool.forEach((projectile) => {
       projectile.draw(context);
       projectile.update();
+    });
+
+    this.enemyPool.forEach((enemy) => {
+      enemy.draw(context);
+      enemy.update();
     });
 
     if (this.debug) {
@@ -182,6 +246,18 @@ class Game {
   getProjectilePool() {
     for (let index = 0; index < this.projectilePool.length; index++) {
       if (this.projectilePool[index].free) return this.projectilePool[index];
+    }
+  }
+
+  createEnemyPool() {
+    for (let index = 0; index < this.numberOfEnemies; index++) {
+      this.enemyPool.push(new Enemy(this));
+    }
+  }
+
+  getEnemyPool() {
+    for (let index = 0; index < this.enemyPool.length; index++) {
+      if (this.enemyPool[index].free) return this.enemyPool[index];
     }
   }
 }
