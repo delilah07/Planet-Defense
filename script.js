@@ -52,6 +52,69 @@ class Player {
       (this.game.planet.radius + this.radius) * this.aim[1];
     this.angle = Math.atan2(this.aim[3], this.aim[2]);
   }
+
+  shoot() {
+    const projectile = this.game.getProjectilePool();
+    if (projectile)
+      projectile.start(
+        this.x + this.radius * this.aim[0],
+        this.y + this.radius * this.aim[1],
+        this.aim[0],
+        this.aim[1]
+      );
+    console.log(projectile);
+  }
+}
+
+class Projectile {
+  constructor(game) {
+    this.game = game;
+    this.x;
+    this.y;
+    this.speedX = 1;
+    this.speedY = 1;
+    this.speedModifier = 5;
+    this.radius = 5;
+    this.free = true;
+  }
+
+  start(x, y, speedX, speedY) {
+    this.free = false;
+    this.x = x;
+    this.y = y;
+    this.speedX = speedX * this.speedModifier;
+    this.speedY = speedY * this.speedModifier;
+  }
+
+  reset() {
+    this.free = true;
+  }
+  draw(context) {
+    if (!this.free) {
+      context.save();
+      context.beginPath();
+      context.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      context.fillStyle = 'gold';
+      context.fill();
+      context.restore();
+    }
+  }
+  update() {
+    if (!this.free) {
+      this.x += this.speedX;
+      this.y += this.speedY;
+    }
+
+    //reset if outside the visible game area
+    if (
+      this.x < 0 ||
+      this.x > this.game.width ||
+      this.y < 0 ||
+      this.y > this.game.height
+    ) {
+      this.reset();
+    }
+  }
 }
 
 class Game {
@@ -67,12 +130,22 @@ class Game {
     };
     this.debug = true;
 
+    this.projectilePool = [];
+    this.numberOfProjectiles = 20;
+    this.createProjectilePool();
+
     window.addEventListener('mousemove', (e) => {
       this.mouse.x = e.offsetX;
       this.mouse.y = e.offsetY;
     });
+    window.addEventListener('mousedown', (e) => {
+      this.mouse.x = e.offsetX;
+      this.mouse.y = e.offsetY;
+      this.player.shoot();
+    });
     window.addEventListener('keyup', (e) => {
       if (e.key === 'd') this.debug = !this.debug;
+      if (e.key === '1') this.player.shoot();
     });
   }
   render(context) {
@@ -80,7 +153,11 @@ class Game {
     this.player.draw(context);
     this.player.update();
 
-    context.beginPath();
+    this.projectilePool.forEach((projectile) => {
+      projectile.draw(context);
+      projectile.update();
+    });
+
     if (this.debug) {
       context.moveTo(this.planet.x, this.planet.y);
       context.lineTo(this.mouse.x, this.mouse.y);
@@ -94,6 +171,18 @@ class Game {
     const aimX = (dx / distance) * -1;
     const aimY = (dy / distance) * -1;
     return [aimX, aimY, dx, dy];
+  }
+
+  createProjectilePool() {
+    for (let index = 0; index < this.numberOfProjectiles; index++) {
+      this.projectilePool.push(new Projectile(this));
+    }
+  }
+
+  getProjectilePool() {
+    for (let index = 0; index < this.projectilePool.length; index++) {
+      if (this.projectilePool[index].free) return this.projectilePool[index];
+    }
   }
 }
 
