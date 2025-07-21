@@ -131,8 +131,16 @@ class Enemy {
 
   start() {
     this.free = false;
-    this.x = Math.random() * this.game.width;
-    this.y = Math.random() * this.game.height;
+
+    if (Math.random() < 0.5) {
+      this.x = Math.random() * this.game.width;
+      this.y =
+        Math.random() < 0.5 ? this.game.height + this.radius : -this.radius;
+    } else {
+      this.x =
+        Math.random() < 0.5 ? this.game.width + this.radius : -this.radius;
+      this.y = Math.random() * this.game.height;
+    }
 
     const aim = this.game.calcAim(this, this.game.planet);
 
@@ -164,6 +172,14 @@ class Enemy {
     if (this.game.checkCollision(this, this.game.player)) {
       this.reset();
     }
+
+    // check collision enemy and rojectile
+    this.game.projectilePool.forEach((projectile) => {
+      if (!projectile.free && this.game.checkCollision(this, projectile)) {
+        this.reset();
+        projectile.reset();
+      }
+    });
   }
 }
 
@@ -187,11 +203,8 @@ class Game {
     this.enemyPool = [];
     this.numberOfEnemies = 20;
     this.createEnemyPool();
-    this.enemyPool[0].start();
-    this.enemyPool[1].start();
-    this.enemyPool[2].start();
-    this.enemyPool[3].start();
-    this.enemyPool[4].start();
+    this.enemyTimer = 0;
+    this.enemyInterval = 1000;
 
     window.addEventListener('mousemove', (e) => {
       this.mouse.x = e.offsetX;
@@ -207,10 +220,16 @@ class Game {
       if (e.key === '1') this.player.shoot();
     });
   }
-  render(context) {
+  render(context, deltaTime) {
     this.planet.draw(context);
     this.player.draw(context);
     this.player.update();
+
+    if (this.debug) {
+      context.moveTo(this.planet.x, this.planet.y);
+      context.lineTo(this.mouse.x, this.mouse.y);
+      context.stroke();
+    }
 
     this.projectilePool.forEach((projectile) => {
       projectile.draw(context);
@@ -222,10 +241,13 @@ class Game {
       enemy.update();
     });
 
-    if (this.debug) {
-      context.moveTo(this.planet.x, this.planet.y);
-      context.lineTo(this.mouse.x, this.mouse.y);
-      context.stroke();
+    //periodically activate an enemy
+    if (this.enemyTimer < this.enemyInterval) {
+      this.enemyTimer += deltaTime;
+    } else {
+      this.enemyTimer = 0;
+      const enemy = this.getEnemyPool();
+      if (enemy) enemy.start();
     }
   }
   calcAim(a, b) {
@@ -280,9 +302,13 @@ window.addEventListener('load', () => {
 
   const game = new Game(canvas);
 
-  function animate() {
+  let lastTime = 0;
+
+  function animate(timeStamp) {
+    const deltaTime = timeStamp - lastTime;
+    lastTime = timeStamp;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    game.render(ctx);
+    game.render(ctx, deltaTime);
     requestAnimationFrame(animate);
   }
   requestAnimationFrame(animate);
