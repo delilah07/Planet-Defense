@@ -155,15 +155,15 @@ class Enemy {
       this.y += this.speedY;
     }
 
-    // //reset if outside the visible game area
-    // if (
-    //   this.x < 0 ||
-    //   this.x > this.game.width ||
-    //   this.y < 0 ||
-    //   this.y > this.game.height
-    // ) {
-    //   this.reset();
-    // }
+    // check collision enemy and planet
+    if (this.game.checkCollision(this, this.game.planet)) {
+      this.reset();
+    }
+
+    // check collision enemy and player
+    if (this.game.checkCollision(this, this.game.player)) {
+      this.reset();
+    }
   }
 }
 
@@ -259,6 +259,14 @@ class Game {
     for (let index = 0; index < this.enemyPool.length; index++) {
       if (this.enemyPool[index].free) return this.enemyPool[index];
     }
+  }
+
+  checkCollision(a, b) {
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    const distance = Math.hypot(dx, dy);
+    const sumOfRadii = a.radius + b.radius;
+    return distance < sumOfRadii;
   }
 }
 
