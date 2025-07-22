@@ -128,11 +128,13 @@ class Enemy {
     this.speedY = 0;
     this.free = true;
     this.angle = 0;
+    this.collided = false;
   }
 
   start() {
     this.free = false;
     this.frameX = 0;
+    this.collided = false;
     this.lives = this.maxLives;
     this.frameY = Math.floor(Math.random() * 4);
 
@@ -189,37 +191,42 @@ class Enemy {
     if (!this.free) {
       this.x += this.speedX;
       this.y += this.speedY;
-    }
 
-    // check collision enemy and planet
-    if (this.game.checkCollision(this, this.game.planet)) {
-      this.lives = 0;
-      this.speedX = 0;
-      this.speedY = 0;
-    }
-
-    // check collision enemy and player
-    if (this.game.checkCollision(this, this.game.player)) {
-      this.lives = 0;
-      this.speedX = 0;
-      this.speedY = 0;
-    }
-
-    // check collision enemy and projectile
-    this.game.projectilePool.forEach((projectile) => {
-      if (
-        !projectile.free &&
-        this.game.checkCollision(this, projectile) &&
-        this.lives > 0
-      ) {
-        projectile.reset();
-        this.hit(1);
+      // check collision enemy and planet
+      if (this.game.checkCollision(this, this.game.planet)) {
+        this.lives = 0;
+        this.speedX = 0;
+        this.speedY = 0;
+        this.collided = true;
       }
-    });
-    //sprite animation
-    if (this.lives < 1 && this.game.spriteUpdate) this.frameX++;
 
-    if (this.frameX > this.maxFrame) this.reset();
+      // check collision enemy and player
+      if (this.game.checkCollision(this, this.game.player)) {
+        this.lives = 0;
+        this.speedX = 0;
+        this.speedY = 0;
+        this.collided = true;
+      }
+
+      // check collision enemy and projectile
+      this.game.projectilePool.forEach((projectile) => {
+        if (
+          !projectile.free &&
+          this.game.checkCollision(this, projectile) &&
+          this.lives > 0
+        ) {
+          projectile.reset();
+          this.hit(1);
+        }
+      });
+      //sprite animation
+      if (this.lives < 1 && this.game.spriteUpdate) this.frameX++;
+
+      if (this.frameX === this.maxFrame) {
+        this.reset();
+        if (!this.collided) this.game.score += this.maxLives;
+      }
+    }
   }
 }
 
@@ -230,7 +237,7 @@ class Asteroid extends Enemy {
     this.frameX = 0;
     this.frameY = Math.floor(Math.random() * 4);
     this.maxFrame = 7;
-    this.lives = 2;
+    this.lives = 1;
     this.maxLives = this.lives;
   }
 }
@@ -254,6 +261,7 @@ class Game {
     this.height = this.canvas.height;
     this.planet = new Planet(this);
     this.player = new Player(this);
+
     this.mouse = {
       x: 0,
       y: 0,
@@ -275,6 +283,9 @@ class Game {
     this.spriteTimer = 0;
     this.spriteInterval = 150;
 
+    this.score = 0;
+    this.winningScore = 10;
+
     window.addEventListener('mousemove', (e) => {
       this.mouse.x = e.offsetX;
       this.mouse.y = e.offsetY;
@@ -291,6 +302,7 @@ class Game {
   }
   render(context, deltaTime) {
     this.planet.draw(context);
+    this.drawStatusText(context);
     this.player.draw(context);
     this.player.update();
 
@@ -311,12 +323,14 @@ class Game {
     });
 
     //periodically activate an enemy
-    if (this.enemyTimer < this.enemyInterval) {
-      this.enemyTimer += deltaTime;
-    } else {
-      this.enemyTimer = 0;
-      const enemy = this.getEnemyPool();
-      if (enemy) enemy.start();
+    if (!this.gameOver) {
+      if (this.enemyTimer < this.enemyInterval) {
+        this.enemyTimer += deltaTime;
+      } else {
+        this.enemyTimer = 0;
+        const enemy = this.getEnemyPool();
+        if (enemy) enemy.start();
+      }
     }
 
     //periodically update sprite animation
@@ -327,6 +341,9 @@ class Game {
       this.spriteTimer = 0;
       this.spriteUpdate = true;
     }
+
+    // win / lose condition
+    if (this.score >= this.winningScore) this.gameOver = true;
   }
   calcAim(a, b) {
     const dx = a.x - b.x;
@@ -369,6 +386,29 @@ class Game {
     const sumOfRadii = a.radius + b.radius;
     return distance < sumOfRadii;
   }
+
+  drawStatusText(context) {
+    context.save();
+    context.textAlign = 'left';
+    context.font = '30px Impact';
+    context.fillText(`Score: ${this.score}`, 20, 30);
+    context.restore();
+
+    if (this.gameOver) {
+      context.textAlign = 'center';
+      let message1;
+      let message2;
+
+      if (this.score >= this.winningScore) {
+        message1 = 'You win!';
+        message2 = `Your score is ${this.score}!`;
+      }
+      context.font = '100px Impact';
+      context.fillText(message1, this.width * 0.5, this.height * 0.5 - 150);
+      context.font = '50px Impact';
+      context.fillText(message2, this.width * 0.5, this.height * 0.5 + 150);
+    }
+  }
 }
 
 window.addEventListener('load', () => {
@@ -380,7 +420,7 @@ window.addEventListener('load', () => {
   ctx.fillStyle = '#fff';
   ctx.lineWidth = 2;
   ctx.font = '50px Helvetica';
-  ctx.textAlight = 'center';
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
   const game = new Game(canvas);
