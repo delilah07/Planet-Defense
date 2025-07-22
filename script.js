@@ -78,11 +78,13 @@ class Projectile {
   }
 
   start(x, y, speedX, speedY) {
-    this.free = false;
-    this.x = x;
-    this.y = y;
-    this.speedX = speedX * this.speedModifier;
-    this.speedY = speedY * this.speedModifier;
+    if (!this.game.gameOver) {
+      this.free = false;
+      this.x = x;
+      this.y = y;
+      this.speedX = speedX * this.speedModifier;
+      this.speedY = speedY * this.speedModifier;
+    }
   }
 
   reset() {
@@ -150,9 +152,10 @@ class Enemy {
     }
 
     const aim = this.game.calcAim(this, this.game.planet);
+    const level = this.game.score / 100 + 1;
 
-    this.speedX = aim[0] * this.speedModifier;
-    this.speedY = aim[1] * this.speedModifier;
+    this.speedX = aim[0] * this.speedModifier * level * 0.3;
+    this.speedY = aim[1] * this.speedModifier * level * 0.3;
     this.angle = Math.atan2(aim[3], aim[2]) + Math.PI * 0.5;
   }
   reset() {
@@ -189,7 +192,7 @@ class Enemy {
     }
   }
   update() {
-    if (!this.free) {
+    if (!this.free && !this.game.gameOver) {
       this.x += this.speedX;
       this.y += this.speedY;
 
@@ -257,6 +260,29 @@ class Lobstermorph extends Enemy {
   }
 }
 
+class Beetlemorph extends Enemy {
+  constructor(game) {
+    super(game);
+    this.image = document.querySelector('#beetlemorph');
+    this.frameX = 0;
+    this.frameY = Math.floor(Math.random() * 4);
+    this.maxFrame = 3;
+    this.lives = 1;
+    this.maxLives = this.lives;
+  }
+}
+class Rhinomorph extends Enemy {
+  constructor(game) {
+    super(game);
+    this.image = document.querySelector('#rhinomorph');
+    this.frameX = 0;
+    this.frameY = Math.floor(Math.random() * 4);
+    this.maxFrame = 6;
+    this.lives = 4;
+    this.maxLives = this.lives;
+  }
+}
+
 class Game {
   constructor(canvas) {
     this.canvas = canvas;
@@ -269,7 +295,7 @@ class Game {
       x: 0,
       y: 0,
     };
-    this.debug = true;
+    this.debug = false;
 
     this.projectilePool = [];
     this.numberOfProjectiles = 20;
@@ -287,7 +313,7 @@ class Game {
     this.spriteInterval = 150;
 
     this.score = 0;
-    this.winningScore = 100;
+    this.winningScore = 1000;
     this.lives = 5;
 
     window.addEventListener('mousemove', (e) => {
@@ -328,6 +354,7 @@ class Game {
 
     //periodically activate an enemy
     if (!this.gameOver) {
+      if (this.score > 500) this.enemyInterval = 700;
       if (this.enemyTimer < this.enemyInterval) {
         this.enemyTimer += deltaTime;
       } else {
@@ -373,8 +400,12 @@ class Game {
   createEnemyPool() {
     for (let index = 0; index < this.numberOfEnemies; index++) {
       let randomNumber = Math.random();
-      if (randomNumber > 0.25) {
+      if (randomNumber < 0.35) {
         this.enemyPool.push(new Asteroid(this));
+      } else if (randomNumber < 0.65) {
+        this.enemyPool.push(new Beetlemorph(this));
+      } else if (randomNumber < 0.85) {
+        this.enemyPool.push(new Rhinomorph(this));
       } else {
         this.enemyPool.push(new Lobstermorph(this));
       }
@@ -415,7 +446,7 @@ class Game {
         message2 = `Your score is ${this.score}!`;
       } else {
         message1 = 'You loose';
-        message2 = `Try again!`;
+        message2 = `Try again! Your score is ${this.score}`;
       }
       context.font = '100px Impact';
       context.fillText(message1, this.width * 0.5, this.height * 0.5 - 150);
