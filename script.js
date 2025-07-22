@@ -126,6 +126,7 @@ class Enemy {
     this.height = this.radius * 2;
     this.speedX = 0;
     this.speedY = 0;
+    this.speedModifier = Math.random() * 0.5 + 0.1;
     this.free = true;
     this.angle = 0;
     this.collided = false;
@@ -150,8 +151,8 @@ class Enemy {
 
     const aim = this.game.calcAim(this, this.game.planet);
 
-    this.speedX = aim[0];
-    this.speedY = aim[1];
+    this.speedX = aim[0] * this.speedModifier;
+    this.speedY = aim[1] * this.speedModifier;
     this.angle = Math.atan2(aim[3], aim[2]) + Math.PI * 0.5;
   }
   reset() {
@@ -193,19 +194,21 @@ class Enemy {
       this.y += this.speedY;
 
       // check collision enemy and planet
-      if (this.game.checkCollision(this, this.game.planet)) {
+      if (this.game.checkCollision(this, this.game.planet) && this.lives >= 1) {
         this.lives = 0;
         this.speedX = 0;
         this.speedY = 0;
         this.collided = true;
+        this.game.lives--;
       }
 
       // check collision enemy and player
-      if (this.game.checkCollision(this, this.game.player)) {
+      if (this.game.checkCollision(this, this.game.player) && this.lives >= 1) {
         this.lives = 0;
         this.speedX = 0;
         this.speedY = 0;
         this.collided = true;
+        this.game.lives--;
       }
 
       // check collision enemy and projectile
@@ -277,14 +280,15 @@ class Game {
     this.createEnemyPool();
 
     this.enemyTimer = 0;
-    this.enemyInterval = 1700;
+    this.enemyInterval = 1000;
 
     this.spriteUpdate = false;
     this.spriteTimer = 0;
     this.spriteInterval = 150;
 
     this.score = 0;
-    this.winningScore = 10;
+    this.winningScore = 100;
+    this.lives = 5;
 
     window.addEventListener('mousemove', (e) => {
       this.mouse.x = e.offsetX;
@@ -343,7 +347,7 @@ class Game {
     }
 
     // win / lose condition
-    if (this.score >= this.winningScore) this.gameOver = true;
+    if (this.score >= this.winningScore || this.lives < 1) this.gameOver = true;
   }
   calcAim(a, b) {
     const dx = a.x - b.x;
@@ -368,8 +372,12 @@ class Game {
 
   createEnemyPool() {
     for (let index = 0; index < this.numberOfEnemies; index++) {
-      // this.enemyPool.push(new Asteroid(this));
-      this.enemyPool.push(new Lobstermorph(this));
+      let randomNumber = Math.random();
+      if (randomNumber > 0.25) {
+        this.enemyPool.push(new Asteroid(this));
+      } else {
+        this.enemyPool.push(new Lobstermorph(this));
+      }
     }
   }
 
@@ -392,7 +400,10 @@ class Game {
     context.textAlign = 'left';
     context.font = '30px Impact';
     context.fillText(`Score: ${this.score}`, 20, 30);
-    context.restore();
+
+    for (let index = 0; index < this.lives; index++) {
+      context.fillRect(20 + 15 * index, 60, 10, 30);
+    }
 
     if (this.gameOver) {
       context.textAlign = 'center';
@@ -402,12 +413,16 @@ class Game {
       if (this.score >= this.winningScore) {
         message1 = 'You win!';
         message2 = `Your score is ${this.score}!`;
+      } else {
+        message1 = 'You loose';
+        message2 = `Try again!`;
       }
       context.font = '100px Impact';
       context.fillText(message1, this.width * 0.5, this.height * 0.5 - 150);
       context.font = '50px Impact';
       context.fillText(message2, this.width * 0.5, this.height * 0.5 + 150);
     }
+    context.restore();
   }
 }
 
